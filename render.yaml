@@ -1,0 +1,29 @@
+# Render blueprint for Lethe. In Render: New, Blueprint, pick this repo.
+# It builds the Docker image in backend/ and runs uvicorn on $PORT.
+services:
+  - type: web
+    name: lethe
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      # local is fast and deterministic. Set to cloud to run on Cognee Cloud.
+      - key: LETHE_MEMORY_BACKEND
+        value: local
+      # generated once by Render, keeps deletion certificate signatures stable
+      - key: LETHE_SIGNING_SECRET
+        generateValue: true
+      # secrets: add these in the Render dashboard (Environment tab)
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: COGNEE_API_KEY
+        sync: false
+      - key: COGNEE_API_URL
+        sync: false
+      - key: COGNEE_TENANT_ID
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
