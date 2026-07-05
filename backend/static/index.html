@@ -3,7 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Lethe — the polygraph for AI memory</title>
+  <title>Lethe: the polygraph for AI memory</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕵️</text></svg>" />
 </head>
@@ -12,24 +15,24 @@
     <header class="top">
       <div class="brand">
         <div class="logo">LETHE</div>
-        <div class="tagline">The polygraph for AI memory — verifiable, adversarially-tested deletion.</div>
+        <div class="tagline">The polygraph for AI memory: verifiable, adversarially-tested deletion.</div>
       </div>
       <div class="pills">
-        <span class="pill" id="pill-backend"><span class="dot"></span>memory: …</span>
-        <span class="pill" id="pill-judge"><span class="dot"></span>judge: …</span>
+        <span class="pill" id="pill-backend"><span class="dot"></span>memory: ...</span>
+        <span class="pill" id="pill-judge"><span class="dot"></span>judge: ...</span>
       </div>
     </header>
 
     <nav class="stepper" id="stepper">
-      <div class="step" data-sec="remember"><div class="n">01 · REMEMBER</div><div class="t">Ingest</div><div class="d">Load customer memory</div></div>
-      <div class="step" data-sec="recall"><div class="n">02 · RECALL</div><div class="t">Ask</div><div class="d">Query &amp; improve</div></div>
-      <div class="step" data-sec="audit"><div class="n">03 · INTERROGATE</div><div class="t">Audit</div><div class="d">Attack the memory</div></div>
-      <div class="step" data-sec="forget"><div class="n">04 · FORGET</div><div class="t">Erase &amp; verify</div><div class="d">Prove deletion</div></div>
+      <div class="step" data-sec="remember"><div class="n">01 REMEMBER</div><div class="t">Ingest</div><div class="d">Load customer memory</div></div>
+      <div class="step" data-sec="recall"><div class="n">02 RECALL</div><div class="t">Ask</div><div class="d">Query and improve</div></div>
+      <div class="step" data-sec="audit"><div class="n">03 INTERROGATE</div><div class="t">Audit</div><div class="d">Attack the memory</div></div>
+      <div class="step" data-sec="forget"><div class="n">04 FORGET</div><div class="t">Erase and verify</div><div class="d">Prove deletion</div></div>
     </nav>
 
     <!-- ============ REMEMBER ============ -->
     <section class="section" id="s-remember">
-      <h2 class="sec">Remember — ingest customer memory</h2>
+      <h2 class="sec">Remember: ingest customer memory</h2>
       <p class="lede">Each customer is stored as its own Cognee dataset (<span class="mono">customer_&lt;id&gt;</span>). One dataset per person is what makes a surgical, provable <span class="mono">forget()</span> possible later.</p>
       <div class="card">
         <div class="row">
@@ -41,35 +44,48 @@
         <h3>Datasets in memory</h3>
         <div class="cust-grid" id="cust-grid"><span class="muted">Nothing ingested yet.</span></div>
       </div>
+      <div class="card">
+        <div class="graphhead">
+          <h3>Memory graph</h3>
+          <div class="glegend">
+            <span class="gchip subj">data subject</span>
+            <span class="gchip city">city</span>
+            <span class="gchip cx">complaint</span>
+            <span class="gchip erased">erased</span>
+          </div>
+        </div>
+        <div class="graphwrap"><canvas id="memgraph"></canvas></div>
+        <div class="hint">Live view of the memory's knowledge graph. Erased subjects collapse into redacted ghost nodes. Drag nodes to explore.</div>
+      </div>
       <details class="card" style="cursor:pointer">
         <summary style="font-weight:600">+ Add a custom record</summary>
         <div style="margin-top:12px">
           <label class="fld">Customer ID</label>
           <input id="rem-id" placeholder="e.g. 042" />
           <label class="fld" style="margin-top:10px">Transcript / notes</label>
-          <textarea id="rem-text" rows="4" placeholder="Support transcript containing customer details…"></textarea>
-          <div class="row" style="margin-top:10px"><button id="btn-remember">Remember →</button></div>
+          <textarea id="rem-text" rows="4" placeholder="Support transcript containing customer details..."></textarea>
+          <div class="row" style="margin-top:10px"><button id="btn-remember">Remember</button></div>
         </div>
       </details>
     </section>
 
     <!-- ============ RECALL ============ -->
     <section class="section" id="s-recall">
-      <h2 class="sec">Recall — ask the memory anything</h2>
-      <p class="lede">The assistant answers from Cognee's hybrid graph-vector memory. Thumbs-down triggers <span class="mono">improve()</span> (memify) — the self-improvement loop, and also the source of the "derived memory artifacts" that make deletion hard to prove.</p>
+      <h2 class="sec">Recall: ask the memory anything</h2>
+      <p class="lede">The assistant answers from Cognee's hybrid graph-vector memory. Thumbs-down triggers <span class="mono">improve()</span> (memify): the self-improvement loop, and also the source of the "derived memory artifacts" that make deletion hard to prove.</p>
       <div class="card">
         <div class="row">
           <input class="grow" id="ask-q" placeholder="e.g. What did Ravi Sharma complain about?" />
           <button class="primary" id="btn-ask">Ask</button>
         </div>
-        <div class="hint">Try: “Which customer complained about a failed UPI refund?” · “List all complaints above ₹10,000”.</div>
+        <div class="hint">Try: “Which customer complained about a failed UPI refund?” “List all complaints above 10,000 rupees”.</div>
       </div>
       <div id="chat"></div>
     </section>
 
     <!-- ============ AUDIT ============ -->
     <section class="section" id="s-audit">
-      <h2 class="sec">Interrogate — red-team the memory</h2>
+      <h2 class="sec">Interrogate: red-team the memory</h2>
       <p class="lede">The Auditor treats <span class="mono">recall()</span> as an attack surface. It fires a frozen battery of 15 extraction probes across 4 attack classes, and a judge scores each response <b class="mono" style="color:var(--red)">LEAK</b> or <b class="mono" style="color:var(--emerald)">SAFE</b>.</p>
       <div class="card">
         <div class="row">
@@ -77,15 +93,15 @@
             <label class="fld">Data subject</label>
             <select id="audit-cust"></select>
           </div>
-          <button class="danger" id="btn-audit" style="align-self:flex-end">Run baseline attack ▶</button>
+          <button class="danger" id="btn-audit" style="align-self:flex-end">Run baseline attack</button>
         </div>
       </div>
       <div class="card hidden" id="audit-board">
         <div class="scorehead">
-          <div class="bignum leak" id="audit-big">–<small>/15</small></div>
+          <div class="bignum leak" id="audit-big">0<small>/15</small></div>
           <div class="gauge">
             <div class="bar"><div class="fill" id="audit-fill" style="width:0%"></div></div>
-            <div class="lbl"><span>Memory contamination</span><span id="audit-cont" class="mono">–</span></div>
+            <div class="lbl"><span>Memory contamination</span><span id="audit-cont" class="mono">0</span></div>
           </div>
         </div>
         <div class="classbar" id="audit-classes"></div>
@@ -95,18 +111,18 @@
 
     <!-- ============ FORGET ============ -->
     <section class="section" id="s-forget">
-      <h2 class="sec">Forget — execute &amp; verify the right to erasure</h2>
+      <h2 class="sec">Forget: execute and verify the right to erasure</h2>
       <p class="lede">One click runs the polygraph: forget the subject, replay the <b>identical</b> probe battery, and issue a cryptographically signed, tamper-evident Deletion Certificate.</p>
 
       <div class="card">
         <label class="fld">Erasure mode</label>
         <div class="modes" id="modes">
           <div class="mode" data-mode="standard">
-            <div class="mt">Standard — record deletion</div>
-            <div class="md"><span class="mono">forget(dataset)</span>. Removes the subject's own record. Fast, but references inside <i>other</i> records survive — the derived-artifact problem.</div>
+            <div class="mt">Standard: record deletion</div>
+            <div class="md"><span class="mono">forget(dataset)</span>. Removes the subject's own record. Fast, but references inside <i>other</i> records survive: the derived-artifact problem.</div>
           </div>
           <div class="mode sel" data-mode="cascade">
-            <div class="mt">Cascade — person erasure ✦</div>
+            <div class="mt">Cascade: person erasure</div>
             <div class="md">Deletes the record <b>and</b> redacts every cross-reference to the subject across the graph. True right-to-be-forgotten.</div>
           </div>
         </div>
@@ -115,7 +131,7 @@
             <label class="fld">Data subject</label>
             <select id="forget-cust"></select>
           </div>
-          <button class="danger" id="btn-forget" style="align-self:flex-end">⚖ Execute right to erasure</button>
+          <button class="danger" id="btn-forget" style="align-self:flex-end">Execute right to erasure</button>
         </div>
         <div class="hint">This runs a baseline attack (if not already), forgets, then re-attacks with the same probes.</div>
       </div>
@@ -124,16 +140,16 @@
       <div class="card hidden" id="forget-board">
         <div class="scorehead">
           <div>
-            <div class="muted" style="font-size:12px">BEFORE → AFTER</div>
+            <div class="muted" style="font-size:12px">BEFORE to AFTER</div>
             <div class="row" style="gap:16px;align-items:baseline">
-              <div class="bignum leak" id="fb-before">–<small>/15</small></div>
-              <div style="font-size:26px;color:var(--faint)">→</div>
-              <div class="bignum safe" id="fb-after">–<small>/15</small></div>
+              <div class="bignum leak" id="fb-before">0<small>/15</small></div>
+              <div style="font-size:26px;color:var(--faint)">to</div>
+              <div class="bignum safe" id="fb-after">0<small>/15</small></div>
             </div>
           </div>
           <div class="gauge">
             <div class="bar"><div class="fill" id="forget-fill" style="width:0%"></div></div>
-            <div class="lbl"><span>Contamination after erasure</span><span id="forget-cont" class="mono">–</span></div>
+            <div class="lbl"><span>Contamination after erasure</span><span id="forget-cont" class="mono">0</span></div>
           </div>
         </div>
         <div class="probes" id="forget-probes"></div>

@@ -1,10 +1,11 @@
-// Lethe frontend — vanilla JS, no build step. Talks to the FastAPI backend
+// Lethe frontend, vanilla JS, no build step. Talks to the FastAPI backend
 // on the same origin (override with ?api=... for a split deploy).
 const API = new URLSearchParams(location.search).get("api") || "";
 const $ = (s) => document.querySelector(s);
 const el = (t, c, h) => { const e = document.createElement(t); if (c) e.className = c; if (h != null) e.innerHTML = h; return e; };
 
 let STATE = { customers: [], mode: "cascade", auditCustomer: null, lastCert: null };
+window.STATE = STATE;
 
 async function api(path, opts = {}) {
   const r = await fetch(API + path, { headers: { "Content-Type": "application/json" }, ...opts });
@@ -12,7 +13,7 @@ async function api(path, opts = {}) {
   return r.json();
 }
 function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 2400); }
-function busy(btn, on, label) { if (on) { btn.dataset.txt = btn.innerHTML; btn.disabled = true; btn.innerHTML = `<span class="spinner"></span>${label || "Working…"}`; } else { btn.disabled = false; btn.innerHTML = btn.dataset.txt; } }
+function busy(btn, on, label) { if (on) { btn.dataset.txt = btn.innerHTML; btn.disabled = true; btn.innerHTML = `<span class="spinner"></span>${label || "Working..."}`; } else { btn.disabled = false; btn.innerHTML = btn.dataset.txt; } }
 
 // ---------- navigation ----------
 function goto(sec) {
@@ -38,34 +39,35 @@ async function loadCustomers() {
   STATE.customers = d.customers;
   STATE.anySeeded = d.seeded;
   renderCustGrid(); renderCustSelects();
+  if (window.renderGraph) window.renderGraph();
 }
 function renderCustGrid() {
   const g = $("#cust-grid");
-  if (!STATE.anySeeded) { g.innerHTML = '<span class="muted">Nothing ingested yet — hit “Seed 5 PaySwift customers”.</span>'; return; }
+  if (!STATE.anySeeded) { g.innerHTML = '<span class="muted">Nothing ingested yet, hit “Seed 5 PaySwift customers”.</span>'; return; }
   g.innerHTML = "";
   STATE.customers.forEach((c) => {
     const tag = c.forgotten ? `<span class="tag gone">forgotten</span>` : c.audited ? `<span class="tag">audited</span>` : `<span class="tag">in memory</span>`;
-    g.appendChild(el("div", "cust", `<div class="nm">${c.name}</div><div class="meta">${c.city} · ${c.complaint} · ${c.amount}</div><div class="ds">customer_${c.id}</div><div style="margin-top:8px">${tag}</div>`));
+    g.appendChild(el("div", "cust", `<div class="nm">${c.name}</div><div class="meta">${c.city} ${c.complaint} ${c.amount}</div><div class="ds">customer_${c.id}</div><div style="margin-top:8px">${tag}</div>`));
   });
 }
 function renderCustSelects() {
   ["#audit-cust", "#forget-cust"].forEach((sel) => {
     const s = $(sel); const cur = s.value;
-    s.innerHTML = STATE.customers.map((c) => `<option value="${c.id}">${c.name} — ${c.city} (customer_${c.id})</option>`).join("");
+    s.innerHTML = STATE.customers.map((c) => `<option value="${c.id}">${c.name}, ${c.city} (customer_${c.id})</option>`).join("");
     if (cur) s.value = cur;
   });
 }
 
 // ---------- REMEMBER ----------
 $("#btn-seed").addEventListener("click", async (e) => {
-  busy(e.target, true, "Ingesting…");
-  try { const r = await api("/api/seed", { method: "POST" }); STATE.anySeeded = true; await loadCustomers(); toast(`Ingested ${r.count} datasets · ${r.documents} docs`); }
+  busy(e.target, true, "Ingesting...");
+  try { const r = await api("/api/seed", { method: "POST" }); STATE.anySeeded = true; await loadCustomers(); toast(`Ingested ${r.count} datasets ${r.documents} docs`); }
   catch (err) { toast("Seed failed: " + err.message); } finally { busy(e.target, false); }
 });
 $("#btn-remember").addEventListener("click", async (e) => {
   const id = $("#rem-id").value.trim(), text = $("#rem-text").value.trim();
   if (!id || !text) return toast("Need an ID and some text.");
-  busy(e.target, true, "Remembering…");
+  busy(e.target, true, "Remembering...");
   try { await api("/api/remember", { method: "POST", body: JSON.stringify({ customer_id: id, text }) }); STATE.anySeeded = true; $("#rem-text").value = ""; await loadCustomers(); toast("Remembered customer_" + id); }
   catch (err) { toast(err.message); } finally { busy(e.target, false); }
 });
@@ -75,17 +77,17 @@ async function doAsk() {
   const q = $("#ask-q").value.trim(); if (!q) return;
   const chat = $("#chat");
   // newest exchange on top: insert answer first, then question above it
-  const aEl = el("div", "msg a", `<div class="who">MEMORY</div><span class="spinner" style="border-top-color:#22d3ee;border-color:#333"></span>recalling…`);
+  const aEl = el("div", "msg a", `<div class="who">MEMORY</div><span class="spinner" style="border-top-color:var(--emerald);border-color:rgba(0,0,0,.12)"></span>recalling...`);
   chat.prepend(aEl);
   chat.prepend(el("div", "msg q", `<div class="who">YOU</div>${escapeHtml(q)}`));
   $("#ask-q").value = "";
   try {
     const r = await api("/api/recall", { method: "POST", body: JSON.stringify({ question: q }) });
-    const ctx = (r.contexts || []).length ? `<div class="ctx">retrieved ${r.contexts.length} context(s):\n${r.contexts.map(c=>"• "+c.slice(0,180)+"…").join("\n")}</div>` : "";
+    const ctx = (r.contexts || []).length ? `<div class="ctx">retrieved ${r.contexts.length} context(s):\n${r.contexts.map(c=>""+c.slice(0,180)+"...").join("\n")}</div>` : "";
     aEl.innerHTML = `<div class="who">MEMORY</div>${escapeHtml(r.answer)}${ctx}
-      <div class="feedback"><button data-fb="up">👍 Helpful</button><button data-fb="down">👎 Wrong → improve()</button></div>`;
+      <div class="feedback"><button data-fb="up">Helpful</button><button data-fb="down">Mark wrong (improve)</button></div>`;
     aEl.querySelectorAll("[data-fb]").forEach((b) => b.addEventListener("click", async () => {
-      if (b.dataset.fb === "down") { await api("/api/improve", { method: "POST", body: JSON.stringify({ feedback: "User marked this answer wrong: " + q }) }); toast("Feedback sent · improve() (memify) triggered"); }
+      if (b.dataset.fb === "down") { await api("/api/improve", { method: "POST", body: JSON.stringify({ feedback: "User marked this answer wrong: " + q }) }); toast("Feedback sent improve() (memify) triggered"); }
       else toast("Thanks!");
       aEl.querySelector(".feedback").innerHTML = `<span class="muted" style="font-size:12px">feedback recorded</span>`;
     }));
@@ -113,7 +115,7 @@ function renderProbeRows(container, results, afterMap) {
 }
 $("#btn-audit").addEventListener("click", async (e) => {
   const id = $("#audit-cust").value; if (!id) return toast("Seed data first.");
-  busy(e.target, true, "Interrogating…");
+  busy(e.target, true, "Interrogating...");
   try {
     const r = await api(`/api/audit/run/${id}?phase=baseline`, { method: "POST" });
     STATE.auditCustomer = id;
@@ -134,7 +136,7 @@ document.querySelectorAll(".mode").forEach((m) => m.addEventListener("click", ()
 $("#btn-forget").addEventListener("click", async (e) => {
   const id = $("#forget-cust").value; if (!id) return toast("Seed data first.");
   const cascade = STATE.mode === "cascade";
-  busy(e.target, true, "Running polygraph…");
+  busy(e.target, true, "Running polygraph...");
   try {
     const r = await api(`/api/erase-and-verify/${id}?cascade=${cascade}`, { method: "POST" });
     STATE.lastCert = r.certificate;
@@ -143,9 +145,9 @@ $("#btn-forget").addEventListener("click", async (e) => {
     const afterMap = Object.fromEntries(r.after.results.map((x) => [x.id, x]));
     renderProbeRows($("#forget-probes"), r.before.results);
     animateBig($("#fb-before"), r.before.leaks, "/15", "leak");
-    $("#fb-after").innerHTML = `–<small>/15</small>`; $("#fb-after").className = "bignum";
+    $("#fb-after").innerHTML = `<small>/15</small>`; $("#fb-after").className = "bignum";
     animateGauge($("#forget-fill"), $("#forget-cont"), r.before.contamination_score);
-    toast("Baseline captured — executing forget()…");
+    toast("Baseline captured, executing forget()...");
     await sleep(700);
     // flip each row to its AFTER verdict, staggered
     const rows = [...$("#forget-probes").children];
@@ -174,7 +176,7 @@ function renderCertificate(c) {
   const w = $("#cert-wrap"); w.innerHTML = "";
   const card = el("div", "cert" + (verified ? "" : " incomplete"));
   const seal = verified
-    ? `<div class="seal"><div class="sm">ERASURE</div><div class="lg">VERIFIED</div><div class="sm">✓ 0 LEAKS</div></div>`
+    ? `<div class="seal"><div class="sm">ERASURE</div><div class="lg">VERIFIED</div><div class="sm">0 LEAKS</div></div>`
     : `<div class="seal bad"><div class="sm">RESIDUAL</div><div class="lg">RISK</div><div class="sm">${v.leaks_after} LEAKS</div></div>`;
   const residual = (v.residual_leaks || []).length
     ? `<div class="residual"><div class="k" style="font-size:11px;color:var(--faint)">RESIDUAL REFERENCES (${v.residual_leaks.length})</div>${v.residual_leaks.map(r=>`<div class="ri">[${r.class}] ${escapeHtml(r.probe)}</div>`).join("")}</div>`
@@ -190,7 +192,7 @@ function renderCertificate(c) {
       <div class="cf"><div class="k">Executed</div><div class="v">${escapeHtml(c.executed_at)}</div></div>
       <div class="cf"><div class="k">Leaks before</div><div class="v big leak">${v.leaks_before}<small style="font-size:12px" class="muted">/${v.probe_battery}</small></div></div>
       <div class="cf"><div class="k">Leaks after</div><div class="v big ${v.leaks_after===0?'safe':'leak'}">${v.leaks_after}<small style="font-size:12px" class="muted">/${v.probe_battery}</small></div></div>
-      <div class="cf"><div class="k">Contamination</div><div class="v">${v.contamination_before}% → <b>${v.contamination_after}%</b></div></div>
+      <div class="cf"><div class="k">Contamination</div><div class="v">${v.contamination_before}%  <b>${v.contamination_after}%</b></div></div>
       <div class="cf"><div class="k">Judge</div><div class="v">${v.judge}</div></div>
       <div class="cf"><div class="k">Attack classes</div><div class="v">${v.attack_classes.join(", ")}</div></div>
       <div class="cf"><div class="k">Method</div><div class="v">${escapeHtml(c.method)}</div></div>
@@ -199,12 +201,12 @@ function renderCertificate(c) {
     <div class="cf" style="margin-top:6px"><div class="k">Evidence Merkle root (SHA-256)</div><div class="sig">${c.evidence_merkle_root}</div></div>
     <div class="cf" style="margin-top:10px"><div class="k">Signature (${c.signature.algorithm})</div><div class="sig">${c.signature.value}</div></div>
     <div class="verifybox">
-      <b>Independent verification</b> <span class="muted" style="font-size:12px">— recompute the signature &amp; Merkle root to detect any tampering.</span>
+      <b>Independent verification</b> <span class="muted" style="font-size:12px">, recompute the signature and Merkle root to detect any tampering.</span>
       <div class="row" style="margin-top:10px">
-        <button class="primary" id="btn-verify">🔒 Verify certificate</button>
-        <button class="ghost" id="btn-download">⬇ Download JSON</button>
-        <button class="ghost" id="btn-print">🖨 Print / PDF</button>
-        <button class="ghost" id="btn-tamper">✏ Simulate tampering</button>
+        <button class="primary" id="btn-verify">Verify certificate</button>
+        <button class="ghost" id="btn-download">Download JSON</button>
+        <button class="ghost" id="btn-print">Print (PDF)</button>
+        <button class="ghost" id="btn-tamper">Simulate tampering</button>
       </div>
       <div class="vresult" id="vresult"></div>
     </div>`;
@@ -220,13 +222,13 @@ function renderCertificate(c) {
   card.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 async function verifyCert(cert, tampered) {
-  const out = $("#vresult"); out.innerHTML = `<span class="muted">verifying…</span>`;
+  const out = $("#vresult"); out.innerHTML = `<span class="muted">verifying...</span>`;
   try {
     const r = await api("/api/certificate/verify", { method: "POST", body: JSON.stringify({ certificate: cert }) });
-    const line = (ok, t) => `<div class="${ok ? 'ok' : 'no'}">${ok ? '✓' : '✗'} ${t}</div>`;
+    const line = (ok, t) => `<div class="${ok ? 'ok' : 'no'}">${ok ? 'PASS' : 'FAIL'} ${t}</div>`;
     out.innerHTML =
-      (tampered ? `<div class="no">⚠ Verifying a TAMPERED copy (leaks_after forced to 0):</div>` : "") +
-      line(r.signature_valid, `signature ${r.signature_valid ? 'authentic' : 'BROKEN — certificate was altered'}`) +
+      (tampered ? `<div class="no">Verifying a TAMPERED copy (leaks_after forced to 0):</div>` : "") +
+      line(r.signature_valid, `signature ${r.signature_valid ? 'authentic' : 'BROKEN, certificate was altered'}`) +
       (r.merkle_valid === null ? "" : line(r.merkle_valid, `evidence Merkle root ${r.merkle_valid ? 'matches audit trail' : 'MISMATCH'}`)) +
       `<div style="margin-top:6px" class="${r.valid ? 'ok' : 'no'}"><b>${r.valid ? 'CERTIFICATE VALID' : 'CERTIFICATE INVALID'}</b></div>`;
   } catch (err) { out.innerHTML = `<span class="no">error: ${err.message}</span>`; }
@@ -245,6 +247,182 @@ function animateBig(node, target, suffix, cls) {
 function animateGauge(fill, label, pct) { fill.style.width = pct + "%"; let n = 0; const iv = setInterval(() => { n += 4; if (n >= pct) { n = pct; clearInterval(iv); } label.textContent = n + "%"; }, 25); }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function escapeHtml(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+// ---------- Memory graph (force-directed, vanilla canvas 2D) ----------
+function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#888"; }
+
+function buildGraphModel(customers) {
+  const nodes = [], edges = [], byId = {};
+  const add = (n) => { byId[n.id] = n; nodes.push(n); return n; };
+  const cities = new Set(), complaints = new Set();
+  customers.forEach((c) => {
+    add({ id: "c:" + c.id, type: "customer", cid: c.id, label: c.name, sub: c.complaint, forgotten: !!c.forgotten, r: 13 });
+    if (c.city) cities.add(c.city);
+    if (c.complaint) complaints.add(c.complaint);
+  });
+  cities.forEach((city) => add({ id: "city:" + city, type: "city", label: city, r: 7 }));
+  complaints.forEach((cx) => add({ id: "cx:" + cx, type: "complaint", label: cx, r: 7 }));
+  customers.forEach((c) => {
+    const s = "c:" + c.id;
+    if (c.city) edges.push({ s, t: "city:" + c.city, kind: "attr" });
+    if (c.complaint) edges.push({ s, t: "cx:" + c.complaint, kind: "attr" });
+    (c.linked_to || []).forEach((lid) => { if (byId["c:" + lid]) edges.push({ s, t: "c:" + lid, kind: "link" }); });
+  });
+  return { nodes, edges, byId };
+}
+
+function createMemGraph(canvas) {
+  const wrap = canvas.parentElement, ctx = canvas.getContext("2d");
+  const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let W = 0, H = 0, dpr = 1, nodes = [], edges = [], byId = {};
+  let raf = null, alpha = 0, dragging = null, hover = null;
+  const pos = {}; // id -> {x,y,vx,vy} preserved across re-renders
+
+  function C() {
+    return { text: cssVar("--text"), brass: cssVar("--brass"), brassTint: cssVar("--brass-tint"),
+      cyan: cssVar("--cyan"), red: cssVar("--red"), border: cssVar("--border-strong"),
+      panel: cssVar("--panel"), faint: cssVar("--faint") };
+  }
+  function resize() {
+    dpr = Math.max(1, window.devicePixelRatio || 1);
+    W = canvas.clientWidth || wrap.clientWidth; H = canvas.clientHeight || 340;
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function heat(a) { alpha = Math.max(alpha, a); if (!reduce) loop(); }
+  function tick() {
+    const cx = W / 2, cy = H / 2;
+    for (let i = 0; i < nodes.length; i++) {
+      const a = nodes[i];
+      for (let j = i + 1; j < nodes.length; j++) {
+        const b = nodes[j];
+        let dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy || 0.01, d = Math.sqrt(d2);
+        const rep = 2600 / d2, fx = (dx / d) * rep, fy = (dy / d) * rep;
+        a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
+      }
+    }
+    edges.forEach((e) => {
+      const a = byId[e.s], b = byId[e.t]; if (!a || !b) return;
+      const rest = e.kind === "link" ? 150 : 95;
+      let dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx * dx + dy * dy) || 0.01;
+      const k = 0.04 * (d - rest), fx = (dx / d) * k, fy = (dy / d) * k;
+      a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
+    });
+    nodes.forEach((n) => { n.vx += (cx - n.x) * 0.008; n.vy += (cy - n.y) * 0.008; });
+    nodes.forEach((n) => {
+      if (n === dragging) { n.vx = 0; n.vy = 0; }
+      else { n.vx *= 0.86; n.vy *= 0.86; n.x += n.vx; n.y += n.vy; }
+      const pad = n.r + 22;
+      n.x = Math.max(pad, Math.min(W - pad, n.x)); n.y = Math.max(pad, Math.min(H - pad, n.y));
+      pos[n.id] = { x: n.x, y: n.y, vx: n.vx, vy: n.vy };
+    });
+  }
+  function drawEdges(col) {
+    edges.forEach((e) => {
+      const a = byId[e.s], b = byId[e.t]; if (!a || !b) return;
+      const erased = a.forgotten || b.forgotten;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+      if (erased) { ctx.strokeStyle = col.red; ctx.globalAlpha = 0.55; ctx.setLineDash([4, 4]); ctx.lineWidth = 1.2; }
+      else if (e.kind === "link") { ctx.strokeStyle = col.brass; ctx.globalAlpha = 0.75; ctx.setLineDash([2, 4]); ctx.lineWidth = 1.3; }
+      else { ctx.strokeStyle = col.border; ctx.globalAlpha = 1; ctx.setLineDash([]); ctx.lineWidth = 1; }
+      ctx.stroke();
+    });
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
+  }
+  function drawNode(n, col) {
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
+    const ring = n === hover ? 2.5 : 1.5;
+    if (n.type === "customer") {
+      if (n.forgotten) {
+        ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, 7); ctx.fillStyle = col.panel; ctx.fill();
+        ctx.setLineDash([3, 3]); ctx.lineWidth = 2; ctx.strokeStyle = col.red; ctx.stroke(); ctx.setLineDash([]);
+      } else {
+        ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, 7); ctx.fillStyle = col.text; ctx.fill();
+        if (n === hover) { ctx.lineWidth = ring; ctx.strokeStyle = col.brass; ctx.stroke(); }
+      }
+    } else if (n.type === "city") {
+      ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, 7); ctx.fillStyle = col.brassTint; ctx.fill();
+      ctx.lineWidth = ring; ctx.strokeStyle = col.brass; ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, 7); ctx.fillStyle = col.panel; ctx.fill();
+      ctx.lineWidth = ring; ctx.strokeStyle = col.cyan; ctx.stroke();
+    }
+    // labels
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    if (n.type === "customer") {
+      if (n.forgotten) {
+        ctx.fillStyle = col.red; ctx.font = '500 11px "IBM Plex Mono", monospace';
+        ctx.fillText("customer_" + n.cid + " erased", n.x, n.y + n.r + 5);
+      } else {
+        ctx.fillStyle = col.text; ctx.font = '600 12.5px Lora, serif';
+        ctx.fillText(n.label, n.x, n.y + n.r + 5);
+        ctx.fillStyle = col.faint; ctx.font = '10px "IBM Plex Mono", monospace';
+        ctx.fillText(n.sub, n.x, n.y + n.r + 22);
+      }
+    } else if (n.type === "city") {
+      ctx.fillStyle = col.brass; ctx.font = '600 11px "IBM Plex Sans", sans-serif';
+      ctx.fillText(n.label, n.x, n.y + n.r + 4);
+    } else {
+      ctx.fillStyle = col.cyan; ctx.font = '500 11px "IBM Plex Sans", sans-serif';
+      ctx.fillText(n.label, n.x, n.y + n.r + 4);
+    }
+  }
+  function draw() {
+    const col = C();
+    ctx.clearRect(0, 0, W, H);
+    drawEdges(col);
+    nodes.forEach((n) => drawNode(n, col));
+  }
+  function loop() {
+    cancelAnimationFrame(raf);
+    const step = () => { tick(); draw(); alpha *= 0.95; if (alpha > 0.02 || dragging) raf = requestAnimationFrame(step); };
+    raf = requestAnimationFrame(step);
+  }
+  function settle() { for (let i = 0; i < 320; i++) tick(); draw(); }
+
+  function update(model) {
+    if (!W) resize();
+    model.nodes.forEach((n) => {
+      const p = pos[n.id];
+      if (p) { n.x = p.x; n.y = p.y; n.vx = p.vx; n.vy = p.vy; }
+      else { n.x = W / 2 + (Math.random() - 0.5) * 140; n.y = H / 2 + (Math.random() - 0.5) * 100; n.vx = 0; n.vy = 0; }
+    });
+    nodes = model.nodes; edges = model.edges; byId = model.byId;
+    if (reduce) settle(); else heat(1);
+  }
+
+  function local(ev) { const r = canvas.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; }
+  function nodeAt(x, y) {
+    for (let i = nodes.length - 1; i >= 0; i--) { const n = nodes[i], dx = x - n.x, dy = y - n.y; if (dx * dx + dy * dy <= (n.r + 6) * (n.r + 6)) return n; }
+    return null;
+  }
+  canvas.addEventListener("pointerdown", (ev) => {
+    const p = local(ev), n = nodeAt(p.x, p.y);
+    if (n) { dragging = n; try { canvas.setPointerCapture(ev.pointerId); } catch (e) {} canvas.style.cursor = "grabbing"; heat(0.6); }
+  });
+  canvas.addEventListener("pointermove", (ev) => {
+    const p = local(ev);
+    if (dragging) { dragging.x = p.x; dragging.y = p.y; dragging.vx = 0; dragging.vy = 0; pos[dragging.id] = { x: p.x, y: p.y, vx: 0, vy: 0 }; heat(0.5); }
+    else { hover = nodeAt(p.x, p.y); canvas.style.cursor = hover ? "grab" : "default"; if (reduce) draw(); }
+  });
+  const release = () => { if (dragging) { dragging = null; canvas.style.cursor = "default"; heat(0.4); } };
+  window.addEventListener("pointerup", release);
+  canvas.addEventListener("pointerleave", () => { if (!dragging) { hover = null; if (reduce) draw(); } });
+
+  if (window.ResizeObserver) new ResizeObserver(() => { resize(); if (reduce) settle(); else heat(0.3); }).observe(wrap);
+
+  resize();
+  return { update };
+}
+
+let MG = null;
+function renderGraph() {
+  const canvas = document.getElementById("memgraph");
+  if (!canvas || !STATE.customers || !STATE.customers.length) return;
+  if (!MG) MG = createMemGraph(canvas);
+  MG.update(buildGraphModel(STATE.customers));
+}
+window.renderGraph = renderGraph;
 
 // ---------- boot ----------
 (async function () {
