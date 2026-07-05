@@ -14,6 +14,20 @@ Lethe is a customer memory agent with verifiable deletion. It loads customer sup
 
 Before deletion the baseline attack extracts personal data on fifteen out of fifteen probes, which is one hundred percent contamination. After deletion with cascade erasure the same fifteen probes extract nothing, which is zero out of fifteen. The certificate is signed with HMAC SHA256 and carries a SHA256 Merkle root over the evidence, so anyone can verify it independently. This result was reproduced with a real LLM judge calling the Anthropic API.
 
+## Screenshots
+
+Memory graph, a live view of the knowledge graph where erased subjects collapse into redacted ghost nodes.
+
+![Memory graph](assets/memory-graph.png)
+
+The interrogation scoreboard, fifteen extraction probes each scored LEAK or SAFE by the judge.
+
+![Audit scoreboard](assets/audit-scoreboard.png)
+
+The signed, tamper evident Deletion Certificate with the verified seal.
+
+![Deletion certificate](assets/deletion-certificate.png)
+
 ## Why it matters
 
 Persistent AI memory is running straight into data protection law. GDPR Article 17, the right to erasure, and India DPDP Act 2023 Section 12 both give people the right to have their data deleted. The European Data Protection Board made the right to erasure its coordinated enforcement priority for 2026. The problem is that once a person data has been loaded, embedded, turned into a knowledge graph, and cross referenced by other records, calling a delete function is not the same as proving the person is gone. Deleted embeddings, leftover graph nodes, and mentions inside other people records are all leftover artifacts that keep leaking. Today nobody can prove deletion. Lethe proves it, with receipts.
