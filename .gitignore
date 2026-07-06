@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+
+# Env / secrets. NEVER commit keys
+.env
+.env.*
+!.env.example
+
+# Cognee local artifacts
+.cognee/
+cognee_system/
+*.db
+
+# Node / tooling
+node_modules/
+package-lock.json
+
+# Vercel
+.vercel/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Scratch
+*.log
+scratchpad/
+
+.vercel
